@@ -4,6 +4,8 @@
 
 A single-page web tool for putting lots of screenshots in order on paper.
 
+**🌐 Open the tool: https://tabbymao.github.io/Sequence-Screenshot-Sorter/**
+
 1. **Add screenshots**: click, drag in, or paste them. Each one gets a fixed number.
 2. **Cut sheet**: every screenshot is scaled to the **same text size**, trimmed, put on **white paper** (text keeps its original color; dark-mode text is made dark), and packed onto Letter / A4 / Legal / A5 pages to use as little paper as possible. Each one has a **dashed cut line** and its **number**. Download the PDF and print it.
 3. Cut the pieces out and arrange them on your desk.
@@ -25,6 +27,8 @@ Open `index.html` in a browser (it loads jsPDF and Google Fonts from CDNs). Or s
 ## 中文
 
 把很多截图排好顺序的单页网页工具。
+
+**🌐 打开工具：https://tabbymao.github.io/Sequence-Screenshot-Sorter/**
 
 1. **上传截图**：点击、拖入或粘贴，每张自动编号，编号不变。
 2. **剪裁版**：所有截图**统一字号**、自动裁掉空白、换成**白底**（文字保持原色，深色模式的浅色字会变深），用最省纸的方式排在 Letter / A4 / Legal / A5 纸上，每张有**虚线**和**编号**。下载 PDF 打印。

@@ -76,7 +76,7 @@ button:disabled{opacity:.5;cursor:default}
 body.healing{--accent:#6b7a4f;--accent-soft:#eef0e2;--title:#6f7d4a;--chip:#A7B892;--paintbg:#F4F0E6;--scene:url("bg/healing.svg")}
 body.fresh{--corner:url("bg/hydrangea.webp");--accent:#2f8462;--accent-soft:#e2f4ea;--title:#5fb586;--chip:#91D9B2;--paintbg:#F5F7F0;--scene:url("bg/fresh.svg")}
 html{background:#F4F0E6}
-.paint{position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:var(--paintbg);background-image:var(--corner,none),var(--scene);background-position:right bottom,center;background-size:min(52vw,820px) auto,cover;background-repeat:no-repeat}
+.paint{position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:var(--paintbg);background-image:var(--corner,none),var(--scene);background-position:right bottom,center;background-size:min(40vw,600px) auto,cover;background-repeat:no-repeat}
 .paint::after{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27260%27%20height%3D%27260%27%3E%3Cfilter%20id%3D%27w%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.75%27%20numOctaves%3D%272%27%20seed%3D%273%27/%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.45%20%200%200%200%200%200.4%20%200%200%200%200%200.3%20%200%200%200%200.5%20-0.22%27/%3E%3C/filter%3E%3Crect%20width%3D%27260%27%20height%3D%27260%27%20filter%3D%27url%28%23w%29%27/%3E%3C/svg%3E");background-size:260px 260px;opacity:.18}
 header>div:first-child{position:relative;max-width:min(880px,58vw);padding:6px 14px 8px;margin:-6px -14px 0;border-radius:18px;background:radial-gradient(ellipse closest-side at 50% 50%,rgba(255,253,246,.85) 0%,rgba(255,253,246,.6) 60%,rgba(255,253,246,0) 100%)}
 header h1{font-family:"Cormorant Garamond","Noto Serif SC",Georgia,serif;font-style:italic;font-weight:600;font-size:40px;line-height:1;color:var(--title);letter-spacing:.5px}
@@ -649,7 +649,11 @@ let dl=null;
   try{ if(window.claude&&window.claude.use) dl=await window.claude.use('downloads'); }catch(e){ dl=null; }
 })();
 async function saveFile(filename,data,msgEl){
-  if(!dl){ showMsg(msgEl,t('noDl'),'warn'); return false; }
+  if(!dl){ // plain website (e.g. GitHub Pages): use a normal browser download
+    try{ const blob=data instanceof Blob?data:new Blob([data]); const url=URL.createObjectURL(blob);
+      const el=document.createElement('a'); el.href=url; el.download=filename; document.body.appendChild(el); el.click(); el.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),4000); showMsg(msgEl,t('saved',filename),'ok'); return true; }
+    catch(e){ showMsg(msgEl,t('noDl'),'warn'); return false; } }
   try{ await dl.save({filename,data}); showMsg(msgEl,t('saved',filename),'ok'); return true; }
   catch(e){ const c=e&&e.code; showMsg(msgEl, c==='declined'?t('declined'):c==='rate_limited'?t('rateLimited'):t('dlFail')+(e&&e.message||c||e),'warn'); return false; }
 }
