@@ -20,9 +20,7 @@ Open `index.html` in a browser (it loads jsPDF and Google Fonts from CDNs). Or s
 ### Files
 - `index.html` — the whole app (HTML + CSS + JS)
 - `bg/healing.svg` — background for the Chinese version (Healing)
-- `bg/fresh.svg` — hanging leaves for the English version (Fresh)
-- `bg/hydrangea-scene.svg` — the hydrangea oil painting, extended with painted heads, leaves and drifting florets
-- `bg/hydrangea.webp` — the original hydrangea painting
+- `bg/fresh.svg` — background for the English version (Fresh)
 
 ---
 
