@@ -1,0 +1,19 @@
+# Never commit user content: uploaded screenshots and generated PDFs
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.heic
+*.gif
+*.bmp
+screenshots/
+uploads/
+exports/
+output/
+# Project files saved from the tool (they contain screenshots)
+*Sequence*project*.json
+*项目*.json
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+.vscode/

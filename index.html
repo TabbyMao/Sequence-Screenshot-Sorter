@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sequence · 截图排序工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body{background:transparent}
+:root{
+  --bg:#f4f2ee; --panel:#ffffff; --ink:#22231f; --muted:#6c6b66; --line:#e2dfd8;
+   --warn:#a15c12; --warn-soft:#fbf0e2; --danger:#a33b2f;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--ink);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif}
+header{padding:18px 22px 6px}
+header h1{margin:0;font-size:20px;letter-spacing:.5px}
+header p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.app{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:14px 22px 40px;align-items:start}
+@media (max-width:860px){.app{grid-template-columns:1fr;padding:12px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.card h2{font-size:14px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.step{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;align-items:center;justify-content:center}
+.drop{border:1.5px dashed #b9b5ab;border-radius:var(--radius);padding:18px 10px;text-align:center;color:var(--muted);cursor:pointer;transition:.15s;background:#faf9f6}
+.drop.over,.drop:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.drop b{color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.row label{min-width:78px;color:var(--muted);font-size:13px}
+select,input[type=number],textarea{font:inherit;border:1px solid var(--line);border-radius:7px;padding:5px 8px;background:#fff;color:var(--ink)}
+input[type=number]{width:70px}
+textarea{width:100%;min-height:64px;resize:vertical}
+.chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink);margin:6px 0}
+button{font:inherit;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:#bdb8ad}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{filter:brightness(1.08)}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.5;cursor:default}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px;max-height:440px;overflow:auto;padding-right:2px}
+.thumb{border:1px solid var(--line);border-radius:8px;padding:5px;background:#faf9f6;position:relative;font-size:11px}
+.thumb .imgbox{height:70px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;border-radius:5px}
+.thumb img{max-width:100%;max-height:70px}
+.thumb .num{position:absolute;top:2px;left:2px;background:var(--ink);color:#fff;border-radius:10px;padding:0 6px;font-weight:700;font-size:12px}
+.thumb .del{position:absolute;top:2px;right:2px;border:none;background:rgba(255,255,255,.9);padding:0 5px;border-radius:5px;color:var(--danger);font-size:12px}
+.thumb .meta{color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumb .meta.warn{color:var(--warn)}
+.thumb .sz{display:flex;align-items:center;gap:2px;margin-top:3px}
+.thumb .sz button{padding:0 6px;font-size:12px;line-height:18px}
+.thumb .sz span{flex:1;text-align:center}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer}
+.tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.stat{color:var(--muted);font-size:13px}
+.msg{font-size:13px;border-radius:8px;padding:8px 10px;margin:8px 0;display:none}
+.msg.show{display:block}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.pages{display:flex;flex-wrap:wrap;gap:18px}
+.pagewrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.pagewrap .cap{font-size:12px;color:var(--muted)}
+.page{position:relative;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.06);overflow:hidden}
+.page canvas{position:absolute;display:block}
+.page .cut{position:absolute;border:1px dashed #8d8a83;pointer-events:none}
+.page .badge{position:absolute;background:#fff;border:1px solid #222;color:#111;font-weight:700;display:flex;align-items:center;justify-content:center;border-radius:999px;font-family:Helvetica,Arial,sans-serif;white-space:nowrap}
+.page .foot{position:absolute;left:0;right:0;text-align:center;color:#aaa;font-family:Helvetica,Arial,sans-serif}
+.empty{color:var(--muted);text-align:center;padding:60px 10px;border:1.5px dashed var(--line);border-radius:var(--radius);background:#faf9f6}
+.busy{position:fixed;inset:0;background:rgba(244,242,238,.75);display:none;align-items:center;justify-content:center;z-index:20;font-size:15px}
+.busy.show{display:flex}
+/* ---- painted-swatch themes ---- */
+body.healing{--accent:#6b7a4f;--accent-soft:#eef0e2;--title:#6f7d4a;--chip:#A7B892;--paintbg:#F4F0E6;--scene:url("bg/healing.svg")}
+body.fresh{--corner:url("bg/hydrangea.webp");--accent:#2f8462;--accent-soft:#e2f4ea;--title:#5fb586;--chip:#91D9B2;--paintbg:#F5F7F0;--scene:url("bg/fresh.svg")}
+html{background:#F4F0E6}
+.paint{position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:var(--paintbg);background-image:var(--corner,none),var(--scene);background-position:right bottom,center;background-size:min(52vw,820px) auto,cover;background-repeat:no-repeat}
+.paint::after{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27260%27%20height%3D%27260%27%3E%3Cfilter%20id%3D%27w%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.75%27%20numOctaves%3D%272%27%20seed%3D%273%27/%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.45%20%200%200%200%200%200.4%20%200%200%200%200%200.3%20%200%200%200%200.5%20-0.22%27/%3E%3C/filter%3E%3Crect%20width%3D%27260%27%20height%3D%27260%27%20filter%3D%27url%28%23w%29%27/%3E%3C/svg%3E");background-size:260px 260px;opacity:.18}
+header>div:first-child{position:relative;max-width:min(880px,58vw);padding:6px 14px 8px;margin:-6px -14px 0;border-radius:18px;background:radial-gradient(ellipse closest-side at 50% 50%,rgba(255,253,246,.85) 0%,rgba(255,253,246,.6) 60%,rgba(255,253,246,0) 100%)}
+header h1{font-family:"Cormorant Garamond","Noto Serif SC",Georgia,serif;font-style:italic;font-weight:600;font-size:40px;line-height:1;color:var(--title);letter-spacing:.5px}
+header h1 .sub{text-shadow:0 0 10px rgba(255,252,244,.9);font-family:"Noto Serif SC","Songti SC",serif;font-style:normal;font-weight:700;color:#2e2a22;font-size:22px;margin-left:12px;letter-spacing:2px}
+header p{color:#4a463d;text-shadow:0 0 8px rgba(255,252,244,.9),0 0 2px rgba(255,252,244,.9);font-family:"Noto Serif SC","Songti SC",serif;letter-spacing:.5px;margin-top:8px}
+header p::before{content:"";display:block;width:46px;height:1.5px;background:#5a554a;margin-bottom:8px;opacity:.7}
+.card{background:rgba(255,253,247,.9);border-color:rgba(120,110,90,.18);box-shadow:0 1px 2px rgba(80,70,50,.06),0 10px 30px rgba(80,70,50,.07);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.card h2{font-family:"Noto Serif SC","Songti SC",serif;font-size:15px;letter-spacing:1px}
+.step{background:var(--chip);color:#fff;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:14px}
+.tab{background:rgba(255,253,247,.88);border-color:rgba(120,110,90,.22);font-family:"Noto Serif SC","Songti SC",serif}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.toolbar .stat{background:rgba(255,253,247,.85);color:#5a554a;padding:4px 10px;border-radius:999px}
+.toolbar .stat:empty{display:none}
+.pagewrap .cap{color:#5a554a}
+.page{box-shadow:0 1px 3px rgba(80,70,50,.15),0 12px 30px rgba(80,70,50,.12)}
+.empty{background:rgba(255,253,247,.85);border-color:rgba(120,110,90,.25)}
+.busy{background:rgba(250,248,240,.7);color:#2e2a22}
+.drop{background:rgba(250,248,240,.85)}
+.thumb{background:rgba(250,248,240,.9)}
+.thumb .num{background:var(--accent)}
+.switches{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.lang button.on,.theme button.on{background:var(--accent);color:#fff}
+.theme{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#fff}
+.theme button{border:none;border-radius:0;padding:5px 12px;font-size:13px;display:flex;align-items:center;gap:6px}
+.theme .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:26px 22px 8px}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-shrink:0;background:#fff}
+.lang button{border:none;border-radius:0;padding:5px 12px;font-size:13px}
+.lang button.on{background:var(--ink);color:#fff}
+header h1 .sub{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
+.small{font-size:12px}
+</style>
+</head>
+<body class="healing">
+<div class="paint" aria-hidden="true"></div>
+<header>
+  <div>
+    <h1>✂︎ Sequence<span class="sub" data-i18n="subtitle"></span></h1>
+    <p data-i18n="tagline"></p>
+  </div>
+  <div class="switches">
+    <div class="lang"><button data-lang="zh">中文</button><button data-lang="en">EN</button></div>
+  </div>
+</header>
+
+<div class="app">
+  <aside>
+    <div class="card">
+      <h2><span class="step">1</span><span data-i18n="upTitle"></span></h2>
+      <div class="drop" id="drop">
+        <span data-i18n-html="dropMain"></span><br>
+        <span class="small" data-i18n="dropSub"></span>
+      </div>
+      <input type="file" id="file" accept="image/*" multiple hidden>
+      <div class="msg" id="upMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span><span data-i18n="setTitle"></span></h2>
+      <div class="row"><label data-i18n="paper"></label>
+        <select id="paper">
+          <option value="letter">Letter (8.5×11 in)</option>
+          <option value="a4">A4 (210×297 mm)</option>
+          <option value="legal">Legal (8.5×14 in)</option>
+          <option value="a5">A5 (148×210 mm)</option>
+        </select>
+        <select id="orient"><option value="portrait" data-i18n="portrait"></option><option value="landscape" data-i18n="landscape"></option></select>
+      </div>
+      <div class="row"><label data-i18n="pt"></label><input type="number" id="pt" min="6" max="24" step="0.5"> <span class="small" data-i18n="ptHint"></span></div>
+      <div class="row"><label data-i18n="margin"></label><input type="number" id="margin" min="3" max="30" step="1"> <span class="small">mm</span></div>
+      <div class="row"><label data-i18n="gap"></label><input type="number" id="gap" min="1" max="15" step="0.5"> <span class="small" data-i18n="gapHint"></span></div>
+      <label class="chk"><input type="checkbox" id="whiteBg"> <span data-i18n="whiteBg"></span></label>
+      <label class="chk"><input type="checkbox" id="trim"> <span data-i18n="trim"></span></label>
+      <label class="chk"><input type="checkbox" id="rotate"> <span data-i18n="rotate"></span></label>
+      <p class="hint" data-i18n="setHint"></p>
+      <div class="row" style="margin-top:10px"><label data-i18n="bgLabel"></label><button id="bgPick" data-i18n="bgPick"></button><button id="bgReset" data-i18n="bgReset"></button>
+        <input type="file" id="bgFile" accept="image/*" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2><span data-i18n="listTitle"></span> <span class="stat" id="count"></span></h2>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="renum" data-i18n="renum"></button>
+        <button id="clear" class="danger" data-i18n="clear"></button>
+      </div>
+      <div class="row">
+        <button id="saveProj" data-i18n="saveProj"></button>
+        <button id="loadProj" data-i18n="loadProj"></button>
+        <input type="file" id="projFile" accept=".json,application/json" hidden>
+      </div>
+      <p class="hint" data-i18n="projHint"></p>
+    </div>
+  </aside>
+
+  <main>
+    <div class="tabs">
+      <div class="tab on" data-tab="cut" data-i18n="tabCut"></div>
+      <div class="tab" data-tab="order" data-i18n="tabOrder"></div>
+    </div>
+
+    <div class="card" id="orderCard" style="display:none">
+      <h2><span class="step">3</span><span data-i18n="orderTitle"></span></h2>
+      <textarea id="orderText" data-i18n-ph="orderPh"></textarea>
+      <div class="row">
+        <label style="min-width:auto" data-i18n="layout"></label>
+        <select id="orderLayout">
+          <option value="column" data-i18n="column"></option>
+          <option value="flow" data-i18n="flow"></option>
+        </select>
+        <label class="chk"><input type="checkbox" id="showNumOrdered"> <span data-i18n="showNum"></span></label>
+        <label class="chk"><input type="checkbox" id="appendMissing"> <span data-i18n="appendMissing"></span></label>
+      </div>
+      <div class="msg" id="orderMsg"></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="primary" id="pdfBtn" data-i18n="pdf"></button>
+      <span class="stat" id="stat"></span>
+    </div>
+    <div class="msg" id="pdfMsg"></div>
+    <div class="pages" id="pages"></div>
+  </main>
+</div>
+<div class="busy" id="busy"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const PAPERS = {letter:[215.9,279.4], a4:[210,297], legal:[215.9,355.6], a5:[148,210]};
+const DEFAULTS = {paper:'letter', orient:'portrait', pt:11, margin:8, gap:4, rotate:false, trim:true, whiteBg:true,
+  orderLayout:'column', showNumOrdered:false, appendMissing:true};
+
+const I18N = {
+ zh:{whiteBg:'白底：去掉截图原来的背景色，文字保持原色', bgLabel:'网页背景', bgPick:'换一张图', bgReset:'恢复默认', bgSaved:'✓ 背景已更换（只在这个浏览器里）', thHealing:'治愈', thFresh:'清新', subtitle:'截图排序工具', tagline:'上传截图 → 统一字号、省纸排版、虚线分割、编号 → 打印剪开，在桌上排好顺序 → 输入编号顺序 → 生成排好序的 PDF',
+  upTitle:'上传截图', dropMain:'<b>点击选择</b>、拖入，或直接 <b>Ctrl/⌘+V</b> 粘贴截图', dropSub:'可以分多次添加，编号会接着往下编',
+  setTitle:'纸张与字号', paper:'纸张', portrait:'纵向', landscape:'横向', pt:'目标字号', ptHint:'pt（所有截图的字统一到这个大小）',
+  margin:'页边距', gap:'剪裁间隙', gapHint:'mm（虚线在间隙中间）', trim:'自动裁掉截图四周的空白', rotate:'剪裁版允许旋转 90° 来更省纸',
+  setHint:'字号是按截图里每行文字的高度自动识别的。如果某张识别不准（比如全是公式或图），在下面缩略图里用 −/+ 微调它的大小。',
+  listTitle:'截图列表', renum:'重新编号 1…n', clear:'清空全部', saveProj:'保存项目文件', loadProj:'打开项目文件',
+  projHint:'项目会自动保存在这个浏览器里。换设备或换浏览器时，用“保存项目文件”带走。',
+  tabCut:'① 剪裁版（省纸 + 虚线 + 编号）', tabOrder:'② 排序版（按你给的编号顺序）', orderTitle:'输入排好的编号顺序',
+  orderPh:'例如：3 1 5 2 4　或　3,1,5,2,4　或每行一个', layout:'排版', column:'单列（从上到下，最清楚）', flow:'流式（窄图并排，更省纸）',
+  showNum:'显示编号', appendMissing:'没写到的编号放最后', pdf:'下载 PDF',
+  busy:'正在处理…', loading:'正在载入…', makingPdf:'正在生成 PDF…',
+  emptyNone:'还没有截图。先在左边上传几张试试 👈', emptyNothing:'没有可排的截图',
+  page:n=>`第 ${n} 页`, pageNums:l=>` · 编号 ${l}`, sep:'、',
+  statCut:(n,p,u)=>`${n} 张截图 → ${p} 页 · 纸面利用率约 ${u}%`, statShrunk:l=>` · ⚠ ${l} 号太宽，已缩小到页宽（字会偏小）`,
+  statOrder:(n,p)=>`${n} 张截图 → ${p} 页`,
+  orderHint:'在上面输入你在桌上排好的编号顺序。下面先按原编号预览。', unknown:l=>`没有这些编号：${l}（已忽略）`,
+  dup:l=>`重复的编号：${l}（只用第一次）`, missing:(l,a)=>`没写到：${l}`+(a?'（已放到最后）':'（未包含）'), orderOk:n=>`✓ 已按你的顺序排好 ${n} 张`, join:'；',
+  glyph:n=>`字高 ${n}px`, noGlyph:'未识别字高', mmWide:n=>`${n}mm宽`, del:'删除', pasted:'粘贴的截图',
+  added:(n,f)=>`已添加 ${n} 张`+(f?`，${f} 张读取失败（格式不支持？）`:''),
+  noDl:'这个视图里不能下载文件。请在 claude.ai 里打开这个页面再试。', saved:f=>`✓ 已保存 ${f}`, declined:'已取消下载。',
+  rateLimited:'有一个下载确认还没处理，请稍后再试。', dlFail:'下载失败：', noJsPdf:'PDF 组件没能加载（可能网络问题），刷新页面再试。',
+  pdfErr:'生成 PDF 出错：', pdfCut:'Sequence-剪裁版', pdfOrder:'Sequence-排序版', projName:'Sequence-项目.json',
+  confirmRenum:'再点一次确认（打印过的编号会变）', confirmClear:'再点一次确认清空', nothingToSave:'还没有截图可保存。',
+  opened:n=>`✓ 已打开项目（${n} 张）`, notProj:'这不是本工具的项目文件。', projFail:'项目文件读取失败。'},
+ en:{whiteBg:'White paper: remove each screenshot’s background color, keep text colors', bgLabel:'Page background', bgPick:'Use my image', bgReset:'Reset', bgSaved:'✓ Background changed (this browser only)', thHealing:'Healing', thFresh:'Fresh', subtitle:'Screenshot Sorter', tagline:'Upload screenshots → same text size, paper-saving layout, dashed cut lines, numbers → print, cut and arrange them on your desk → type the number order → get a sorted PDF',
+  upTitle:'Add screenshots', dropMain:'<b>Click to choose</b>, drag in, or <b>Ctrl/⌘+V</b> to paste', dropSub:'Add more any time — numbers keep counting up',
+  setTitle:'Paper & text size', paper:'Paper', portrait:'Portrait', landscape:'Landscape', pt:'Text size', ptHint:'pt (all screenshots are scaled to this text size)',
+  margin:'Margins', gap:'Cut gap', gapHint:'mm (dashed line runs through the middle)', trim:'Trim blank borders around screenshots', rotate:'Allow 90° rotation on the cut sheet to save paper',
+  setHint:'Text size is detected from the height of the text lines in each screenshot. If one looks off (e.g. mostly formulas or a figure), fine-tune it with −/+ below.',
+  listTitle:'Screenshots', renum:'Renumber 1…n', clear:'Clear all', saveProj:'Save project file', loadProj:'Open project file',
+  projHint:'Your project is saved automatically in this browser. To move it to another device or browser, use “Save project file”.',
+  tabCut:'① Cut sheet (compact + cut lines + numbers)', tabOrder:'② Sorted (in your number order)', orderTitle:'Enter the order of the numbers',
+  orderPh:'e.g. 3 1 5 2 4  or  3,1,5,2,4  or one per line', layout:'Layout', column:'Single column (top to bottom, clearest)', flow:'Flow (narrow ones side by side, saves paper)',
+  showNum:'Show numbers', appendMissing:'Put unlisted numbers at the end', pdf:'Download PDF',
+  busy:'Working…', loading:'Loading…', makingPdf:'Building PDF…',
+  emptyNone:'No screenshots yet. Add a few on the left 👈', emptyNothing:'Nothing to lay out',
+  page:n=>`Page ${n}`, pageNums:l=>` · #${l}`, sep:', ',
+  statCut:(n,p,u)=>`${n} screenshot${n>1?'s':''} → ${p} page${p>1?'s':''} · ~${u}% of paper used`, statShrunk:l=>` · ⚠ #${l} too wide, shrunk to page width (smaller text)`,
+  statOrder:(n,p)=>`${n} screenshot${n>1?'s':''} → ${p} page${p>1?'s':''}`,
+  orderHint:'Type the order you arranged on your desk above. Preview below uses the original numbers for now.', unknown:l=>`No such numbers: ${l} (ignored)`,
+  dup:l=>`Repeated: ${l} (first one used)`, missing:(l,a)=>`Not listed: ${l}`+(a?' (added at the end)':' (left out)'), orderOk:n=>`✓ Sorted ${n} screenshots in your order`, join:'; ',
+  glyph:n=>`text ${n}px`, noGlyph:'text size ?', mmWide:n=>`${n}mm wide`, del:'Delete', pasted:'Pasted screenshot',
+  added:(n,f)=>`Added ${n}`+(f?`, ${f} couldn’t be read (unsupported format?)`:''),
+  noDl:'Downloads don’t work in this view. Open the page in claude.ai and try again.', saved:f=>`✓ Saved ${f}`, declined:'Download cancelled.',
+  rateLimited:'A download prompt is still open — try again in a moment.', dlFail:'Download failed: ', noJsPdf:'The PDF library didn’t load (network?). Reload the page and try again.',
+  pdfErr:'PDF error: ', pdfCut:'Sequence-cut-sheet', pdfOrder:'Sequence-sorted', projName:'Sequence-project.json',
+  confirmRenum:'Click again to confirm (printed numbers will change)', confirmClear:'Click again to clear everything', nothingToSave:'No screenshots to save yet.',
+  opened:n=>`✓ Project opened (${n} screenshots)`, notProj:'That isn’t a Sequence project file.', projFail:'Couldn’t read the project file.'}
+};
+let lang = (()=>{ try{ const v=localStorage.getItem('sequence-lang'); if(v==='zh'||v==='en') return v; }catch(e){} return /^zh/i.test(navigator.language||'')?'zh':'en'; })();
+function t(k,...a){ const v=(I18N[lang]||I18N.zh)[k]; return typeof v==='function'?v(...a):(v==null?k:v); }
+function applyLang(){
+  document.documentElement.lang = lang==='zh'?'zh-CN':'en';
+  document.title = 'Sequence · '+t('subtitle');
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+  document.querySelectorAll('[data-i18n-html]').forEach(e=>e.innerHTML=t(e.dataset.i18nHtml));
+  document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+  document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.lang===lang));
+}
+const state = { images:[], nextNum:1, settings:{...DEFAULTS}, orderText:'', tab:'cut' };
+const rt = {};   // id -> {img, glyph, rowInk, s}
+let lastPages = [], lastMode = 'cut';
+
+/* ---------- helpers ---------- */
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+function median(a){ if(!a.length) return null; const b=[...a].sort((x,y)=>x-y); const n=b.length; return n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2; }
+function showMsg(el, text, kind){ el.textContent=text||''; el.className='msg'+(text?' show '+(kind||'ok'):''); }
+function geom(){
+  const s = state.settings; let [pw,ph] = PAPERS[s.paper]||PAPERS.letter;
+  if(s.orient==='landscape') [pw,ph]=[ph,pw];
+  const m = Math.max(3, +s.margin||8);
+  return {pw, ph, m, aw:pw-2*m, ah:ph-2*m};
+}
+function loadImage(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
+function readFile(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }); }
+
+/* ---------- text-size detection ---------- */
+function analyze(img){
+  const w=img.naturalWidth, h=img.naturalHeight;
+  let s = Math.min(1, 1400/w, Math.sqrt(6e6/(w*h)));
+  const W=Math.max(1,Math.round(w*s)), H=Math.max(1,Math.round(h*s));
+  s = W/w;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.drawImage(img,0,0,W,H);
+  const d=ctx.getImageData(0,0,W,H).data;
+  const lum=new Uint8Array(W*H), hist=new Uint32Array(64);
+  for(let i=0,p=0;i<d.length;i+=4,p++){ const l=(d[i]*299+d[i+1]*587+d[i+2]*114)/1000|0; lum[p]=l; hist[l>>2]++; }
+  let mb=0; for(let b=1;b<64;b++) if(hist[b]>hist[mb]) mb=b;
+  const bg=mb*4+2;
+  const rowInk=new Uint16Array(H);
+  for(let y=0;y<H;y++){ let c2=0; const o=y*W; for(let x=0;x<W;x++){ if(Math.abs(lum[o+x]-bg)>45) c2++; } rowInk[y]=c2; }
+  // text lines = runs of rows with ink
+  const colInk=new Uint16Array(W);
+  for(let y2=0;y2<H;y2++){ const o=y2*W; for(let x=0;x<W;x++){ if(Math.abs(lum[o+x]-bg)>45) colInk[x]++; } }
+  let r0=0,r1=H-1,c0=0,c1=W-1;
+  while(r0<H-1&&rowInk[r0]<2) r0++; while(r1>r0&&rowInk[r1]<2) r1--;
+  while(c0<W-1&&colInk[c0]<2) c0++; while(c1>c0&&colInk[c1]<2) c1--;
+  const pad=6;
+  const crop = (r1>r0&&c1>c0) ? {x:Math.max(0,(c0-pad)/s), y:Math.max(0,(r0-pad)/s), x2:Math.min(w,(c1+1+pad)/s), y2:Math.min(h,(r1+1+pad)/s)} : {x:0,y:0,x2:w,y2:h};
+  crop.w=crop.x2-crop.x; crop.h=crop.y2-crop.y;
+  const runs=[]; let y=0;
+  while(y<H){
+    if(rowInk[y]>=2){ let e=y; while(e+1<H && rowInk[e+1]>=2) e++;
+      // merge 1-row gaps (dots of i, j etc.)
+      while(e+2<H && rowInk[e+1]<2 && rowInk[e+2]>=2){ e+=2; while(e+1<H && rowInk[e+1]>=2) e++; }
+      runs.push((e-y+1)/s); y=e+1; }
+    else y++;
+  }
+  const good = runs.filter(r=>r>=6 && r<=320);
+  // ignore runs that are huge compared to the typical line (figures, big formulas)
+  let glyph = median(good);
+  if(glyph){ const core=good.filter(r=>r<=glyph*1.8 && r>=glyph*0.45); glyph=median(core)||glyph; }
+  return {glyph: good.length? glyph : null, rowInk, s, crop};
+}
+
+/* ---- white background: remove the screenshot's own background, keep text colors ---- */
+function flipLight(r,g,b){
+  r/=255; g/=255; b/=255; const mx=Math.max(r,g,b), mn=Math.min(r,g,b); const L=(mx+mn)/2;
+  if(L<=0.5) return [r*255,g*255,b*255];
+  let H=0,S=0; const dd=mx-mn;
+  if(dd>1e-6){ S=dd/(1-Math.abs(2*L-1)); H= mx===r?((g-b)/dd)%6 : mx===g?(b-r)/dd+2 : (r-g)/dd+4; H*=60; if(H<0) H+=360; }
+  const nL=Math.min(0.4,1-L), C=(1-Math.abs(2*nL-1))*S, X=C*(1-Math.abs((H/60)%2-1)), m=nL-C/2;
+  let rr,gg,bb; if(H<60){rr=C;gg=X;bb=0;} else if(H<120){rr=X;gg=C;bb=0;} else if(H<180){rr=0;gg=C;bb=X;} else if(H<240){rr=0;gg=X;bb=C;} else if(H<300){rr=X;gg=0;bb=C;} else {rr=C;gg=0;bb=X;}
+  return [(rr+m)*255,(gg+m)*255,(bb+m)*255];
+}
+function whiten(img){
+  const w=img.naturalWidth, h=img.naturalHeight;
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0);
+  const id=ctx.getImageData(0,0,w,h), d=id.data, N=w*h;
+  // most common color = background
+  const bins=new Uint32Array(32768), step=Math.max(1,Math.floor(N/400000));
+  for(let q=0;q<N;q+=step){ const i=q*4; bins[((d[i]>>3)<<10)|((d[i+1]>>3)<<5)|(d[i+2]>>3)]++; }
+  let mb=0; for(let b=1;b<32768;b++) if(bins[b]>bins[mb]) mb=b;
+  let sr=0,sg=0,sb=0,sn=0;
+  for(let q=0;q<N;q+=step){ const i=q*4; if((((d[i]>>3)<<10)|((d[i+1]>>3)<<5)|(d[i+2]>>3))===mb){ sr+=d[i]; sg+=d[i+1]; sb+=d[i+2]; sn++; } }
+  const br=sr/sn, bgG=sg/sn, bb=sb/sn;
+  const darkBg=(0.299*br+0.587*bgG+0.114*bb)<128;
+  // typical text contrast (90th percentile distance of ink pixels)
+  const hist=new Uint32Array(443);
+  for(let q=0;q<N;q+=step){ const i=q*4; const dd=Math.hypot(d[i]-br,d[i+1]-bgG,d[i+2]-bb)|0; if(dd>40) hist[dd]++; }
+  let tot=0; for(const v of hist) tot+=v; let acc=0, dref=180;
+  if(tot>50){ for(let k=0;k<443;k++){ acc+=hist[k]; if(acc>=tot*0.9){ dref=k; break; } } }
+  dref=Math.max(70,dref);
+  const t0=14;
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i], g=d[i+1], b=d[i+2];
+    const dist=Math.hypot(r-br,g-bgG,b-bb);
+    if(dist<=t0){ d[i]=d[i+1]=d[i+2]=255; continue; }
+    const a=Math.min(1,(dist-t0)/(dref-t0));
+    // un-mix the anti-aliased edge back to the pure text color
+    let fr=br+(r-br)/a, fg=bgG+(g-bgG)/a, fb=bb+(b-bb)/a;
+    fr=fr<0?0:fr>255?255:fr; fg=fg<0?0:fg>255?255:fg; fb=fb<0?0:fb>255?255:fb;
+    if(darkBg){ // light text from dark mode: keep hue & saturation, flip lightness so it reads on white
+      const o=flipLight(fr,fg,fb); fr=o[0]; fg=o[1]; fb=o[2];
+    }
+    d[i]=255+(fr-255)*a; d[i+1]=255+(fg-255)*a; d[i+2]=255+(fb-255)*a;
+  }
+  ctx.putImageData(id,0,0);
+  return c;
+}
+
+/* source box actually used (trimmed or full) */
+function dims(im){ const a=rt[im.id]; if(state.settings.trim && a && a.crop) return a.crop; return {x:0,y:0,w:im.w,h:im.h}; }
+/* scale: mm per source pixel */
+function targetRun(){ return (+state.settings.pt||11)*0.3528*0.9; }
+function kOf(im){
+  const a=rt[im.id]; const t=targetRun();
+  let base;
+  if(a && a.glyph) base = t/a.glyph;
+  else { const ks=state.images.filter(x=>rt[x.id]&&rt[x.id].glyph).map(x=>t/rt[x.id].glyph); base = median(ks)||0.13; }
+  return base*(im.mult||1);
+}
+
+/* find a good place to split a tall image: a blank row close to maxEnd (source px) */
+function findCut(im, start, maxEnd){
+  const D=dims(im);
+  if(maxEnd >= D.h) return D.h;
+  const a=rt[im.id];
+  if(!a) return maxEnd;
+  const s=a.s, ri=a.rowInk, oy=D.y*s;
+  const lo=Math.max(0,Math.floor(oy+(start+(maxEnd-start)*0.55)*s)), hi=Math.min(ri.length-1,Math.floor(oy+maxEnd*s)-1);
+  let y=hi;
+  while(y>=lo){
+    if(ri[y]<=1){ const e=y; while(y>=lo && ri[y]<=1) y--; const b=y+1;
+      if(e-b+1>=2){ const cut=Math.min(maxEnd,((b+e+1)/2-oy)/s); if(cut>start+1) return cut; } }
+    else y--;
+  }
+  let best=hi, bv=Infinity; for(y=hi;y>=lo;y--){ if(ri[y]<bv){bv=ri[y];best=y;} }
+  const cut=Math.min(maxEnd,(best+1-oy)/s);
+  return cut>start+1?cut:maxEnd;
+}
+
+/* ---------- MaxRects packer ---------- */
+class MaxRects{
+  constructor(W,H){ this.free=[{x:0,y:0,w:W,h:H}]; }
+  insert(w,h,heur,rot){
+    let best=null,b1=Infinity,b2=Infinity;
+    const opts = rot && Math.abs(w-h)>1e-6 ? [[w,h,false],[h,w,true]] : [[w,h,false]];
+    for(const f of this.free) for(const [ww,hh,r] of opts){
+      if(ww<=f.w+1e-6 && hh<=f.h+1e-6){
+        const lw=f.w-ww, lh=f.h-hh; let s1,s2;
+        if(heur==='bssf'){s1=Math.min(lw,lh); s2=Math.max(lw,lh);}
+        else if(heur==='blsf'){s1=Math.max(lw,lh); s2=Math.min(lw,lh);}
+        else if(heur==='baf'){s1=f.w*f.h-ww*hh; s2=Math.min(lw,lh);}
+        else {s1=f.y+hh; s2=f.x;}
+        if(s1<b1-1e-9 || (Math.abs(s1-b1)<=1e-9 && s2<b2)){ b1=s1; b2=s2; best={x:f.x,y:f.y,w:ww,h:hh,rot:r}; }
+      }
+    }
+    if(best) this.place(best);
+    return best;
+  }
+  place(r){
+    const nf=[];
+    for(const f of this.free){
+      if(r.x>=f.x+f.w-1e-9 || r.x+r.w<=f.x+1e-9 || r.y>=f.y+f.h-1e-9 || r.y+r.h<=f.y+1e-9){ nf.push(f); continue; }
+      if(r.y>f.y) nf.push({x:f.x,y:f.y,w:f.w,h:r.y-f.y});
+      if(r.y+r.h<f.y+f.h) nf.push({x:f.x,y:r.y+r.h,w:f.w,h:f.y+f.h-(r.y+r.h)});
+      if(r.x>f.x) nf.push({x:f.x,y:f.y,w:r.x-f.x,h:f.h});
+      if(r.x+r.w<f.x+f.w) nf.push({x:r.x+r.w,y:f.y,w:f.x+f.w-(r.x+r.w),h:f.h});
+    }
+    const keep=nf.filter(f=>f.w>0.3 && f.h>0.3);
+    this.free=keep.filter((a,i)=>!keep.some((b,j)=>j!==i && a.x>=b.x-1e-9 && a.y>=b.y-1e-9 && a.x+a.w<=b.x+b.w+1e-9 && a.y+a.h<=b.y+b.h+1e-9 && (j<i || !(b.x>=a.x-1e-9 && b.y>=a.y-1e-9 && b.x+b.w<=a.x+a.w+1e-9 && b.y+b.h<=a.y+a.h+1e-9))));
+  }
+}
+
+/* ---------- layout: cut sheet ---------- */
+function cutItems(){
+  const {aw,ah}=geom(); const items=[];
+  for(const im of [...state.images].sort((a,b)=>a.num-b.num)){
+    const D=dims(im); let k=kOf(im); let shrunk=false;
+    if(D.w*k>aw){ k=aw/D.w; shrunk=true; }
+    const parts=[]; let start=0;
+    while(start<D.h-0.5){ const end=findCut(im,start,start+ah/k); parts.push([start,end]); start=end; }
+    parts.forEach(([a,b],i)=>items.push({im, sy:a, sh:b-a, w:D.w*k, h:(b-a)*k, shrunk,
+      label: parts.length>1 ? `${im.num}-${i+1}` : String(im.num)}));
+  }
+  return items;
+}
+function packCut(items){
+  const {aw,ah,m}=geom(); const g=+state.settings.gap||4; const W=aw+g, H=ah+g; const rot=!!state.settings.rotate;
+  const sorts=[(a,b)=>b.h-a.h||b.w-a.w,(a,b)=>b.w*b.h-a.w*a.h,(a,b)=>b.w-a.w||b.h-a.h,
+    (a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h),(a,b)=>(b.w+b.h)-(a.w+a.h)];
+  const heurs=['bssf','baf','bl','blsf'];
+  let best=null, bestScore=Infinity;
+  for(const so of sorts) for(const he of heurs){
+    let rem=[...items].sort(so); const pages=[];
+    while(rem.length){
+      const bin=new MaxRects(W,H); const pl=[], next=[];
+      for(const it of rem){
+        const r=bin.insert(it.w+g,it.h+g,he,rot);
+        if(r) pl.push({im:it.im, sy:it.sy, sh:it.sh, iw:it.w, ih:it.h, x:m+r.x, y:m+r.y, w:r.w-g, h:r.h-g, rot:r.rot, label:it.label, shrunk:it.shrunk});
+        else next.push(it);
+      }
+      if(!pl.length){ const it=next.shift(); pl.push({im:it.im,sy:it.sy,sh:it.sh,iw:it.w,ih:it.h,x:m,y:m,w:it.w,h:it.h,rot:false,label:it.label}); }
+      pages.push(pl); rem=next;
+    }
+    const last=pages[pages.length-1]; const bottom=Math.max(...last.map(p=>p.y+p.h));
+    const score=pages.length*1e7+bottom*1e3+last.length;
+    if(score<bestScore){ bestScore=score; best=pages; }
+  }
+  return best||[];
+}
+
+/* ---------- layout: ordered ---------- */
+function parseOrder(){
+  const nums=(state.orderText.match(/\d+/g)||[]).map(Number);
+  const byNum=new Map(state.images.map(im=>[im.num,im]));
+  const seen=new Set(), seq=[], unknown=[], dup=[];
+  for(const n of nums){ if(!byNum.has(n)){unknown.push(n);continue;} if(seen.has(n)){dup.push(n);continue;} seen.add(n); seq.push(byNum.get(n)); }
+  const missing=state.images.filter(im=>!seen.has(im.num)).sort((a,b)=>a.num-b.num);
+  if(state.settings.appendMissing) seq.push(...missing);
+  return {seq, unknown, dup, missing, given:nums.length};
+}
+function layoutOrdered(seq){
+  const {aw,ah,m}=geom(); const g=Math.max(2,(+state.settings.gap||4)*0.75);
+  const flow=state.settings.orderLayout==='flow', showNum=!!state.settings.showNumOrdered;
+  const pages=[]; let cur=[], y=0, row=null;
+  const newPage=()=>{ if(cur.length) pages.push(cur); cur=[]; y=0; row=null; };
+  const mk=(im,sy,ey,x,yy,w,h,first)=>({im,sy,sh:ey-sy,iw:w,ih:h,x,y:yy,w,h,rot:false,label:(showNum&&first)?String(im.num):null});
+  for(const im of seq){
+    const D=dims(im); let k=kOf(im); if(D.w*k>aw) k=aw/D.w; const w=D.w*k, fullH=D.h*k;
+    if(flow && row && fullH<=ah+1e-6 && row.x+g+w<=aw+1e-6 && row.y+fullH<=ah+1e-6){
+      cur.push(mk(im,0,D.h,m+row.x+g,m+row.y,w,fullH,true)); row.x+=g+w; row.h=Math.max(row.h,fullH); y=row.y+row.h+g; continue;
+    }
+    let start=0, first=true, guard=0;
+    while(start<D.h-0.5 && guard++<500){
+      const remH=(D.h-start)*k, avail=ah-y;
+      if(remH<=avail+1e-6){ cur.push(mk(im,start,D.h,m,m+y,w,remH,first)); row={y,x:w,h:remH}; y+=remH+g; break; }
+      const canSplit = avail>=12 && (remH>ah || avail>=0.3*ah);
+      if(canSplit){
+        const end=findCut(im,start,start+avail/k);
+        if((end-start)*k>=8 || y===0){ cur.push(mk(im,start,end,m,m+y,w,(end-start)*k,first)); start=end; first=false; newPage(); continue; }
+      }
+      newPage();
+    }
+  }
+  newPage();
+  return pages;
+}
+
+/* ---------- drawing ---------- */
+function drawSlice(ctx,p,scale){
+  const R=rt[p.im.id]; const img=(state.settings.whiteBg!==false && R.clean)?R.clean:R.img; const D=dims(p.im); const dw=p.w*scale, dh=p.h*scale;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,dw,dh);
+  if(!p.rot) ctx.drawImage(img,D.x,D.y+p.sy,D.w,p.sh,0,0,dw,dh);
+  else { ctx.save(); ctx.translate(dw,0); ctx.rotate(Math.PI/2); ctx.drawImage(img,D.x,D.y+p.sy,D.w,p.sh,0,0,dh,dw); ctx.restore(); }
+}
+const BADGE_H=5.2, BADGE_FONT=9; // mm, pt
+function badgeW(label){ return Math.max(BADGE_H, label.length*2.0+2.6); }
+
+function renderPreview(pages, mode){
+  const wrap=$('#pages'); wrap.innerHTML='';
+  if(!state.images.length){ wrap.innerHTML='<div class="empty" style="width:100%">'+t('emptyNone')+'</div>'; return; }
+  if(!pages.length){ wrap.innerHTML='<div class="empty" style="width:100%">'+t('emptyNothing')+'</div>'; return; }
+  const {pw,ph,m}=geom(); const g=+state.settings.gap||4;
+  const avail=Math.max(240,(wrap.clientWidth||600));
+  const cw=Math.min(430, avail-4); const S=cw/pw; const dpr=Math.min(2,window.devicePixelRatio||1);
+  pages.forEach((pl,i)=>{
+    const pwrap=document.createElement('div'); pwrap.className='pagewrap';
+    const page=document.createElement('div'); page.className='page'; page.style.width=pw*S+'px'; page.style.height=ph*S+'px';
+    for(const p of pl){
+      if(mode==='cut'){ const c=document.createElement('div'); c.className='cut';
+        Object.assign(c.style,{left:(p.x-g/2)*S+'px',top:(p.y-g/2)*S+'px',width:(p.w+g)*S+'px',height:(p.h+g)*S+'px'}); page.appendChild(c); }
+      const cv=document.createElement('canvas'); cv.width=Math.max(1,Math.round(p.w*S*dpr)); cv.height=Math.max(1,Math.round(p.h*S*dpr));
+      Object.assign(cv.style,{left:p.x*S+'px',top:p.y*S+'px',width:p.w*S+'px',height:p.h*S+'px'});
+      const ctx=cv.getContext('2d'); drawSlice(ctx,p,S*dpr); page.appendChild(cv);
+      if(p.label){ const b=document.createElement('div'); b.className='badge'; b.textContent=p.label;
+        Object.assign(b.style,{left:(p.x+p.w-badgeW(p.label)-0.8)*S+'px',top:(p.y+0.8)*S+'px',height:BADGE_H*S+'px',width:badgeW(p.label)*S+'px',fontSize:BADGE_FONT*0.3528*S+'px'}); page.appendChild(b); }
+    }
+    if(m>=5){ const f=document.createElement('div'); f.className='foot'; f.textContent=`Page ${i+1}/${pages.length}`;
+      Object.assign(f.style,{bottom:(m/2-1.2)*S+'px',fontSize:7*0.3528*S+'px'}); page.appendChild(f); }
+    const cap=document.createElement('div'); cap.className='cap';
+    cap.textContent=t('page',i+1)+(mode==='cut'?t('pageNums',pl.map(p=>p.label).join(t('sep'))):'');
+    pwrap.appendChild(page); pwrap.appendChild(cap); wrap.appendChild(pwrap);
+  });
+}
+
+/* ---------- main render ---------- */
+let rafId=0;
+function render(){ cancelAnimationFrame(rafId); rafId=requestAnimationFrame(doRender); }
+function doRender(){
+  renderThumbs();
+  const n=state.images.length;
+  $('#orderCard').style.display = state.tab==='order'?'':'none';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===state.tab));
+  let pages=[];
+  if(state.tab==='cut'){
+    pages=n?packCut(cutItems()):[];
+    const {aw,ah}=geom(); const used=pages.flat().reduce((s,p)=>s+p.w*p.h,0);
+    const shrunk=state.images.filter(im=>{ const k=kOf(im); return dims(im).w*k>aw; }).map(im=>im.num);
+    $('#stat').textContent = n ? t('statCut',n,pages.length,Math.round(used/(Math.max(1,pages.length)*aw*ah)*100))+(shrunk.length?t('statShrunk',shrunk.join(t('sep'))):'') : '';
+  } else {
+    const o=parseOrder(); const om=$('#orderMsg');
+    if(!o.given){ showMsg(om, n?t('orderHint'):'', 'ok'); }
+    else {
+      const bits=[];
+      if(o.unknown.length) bits.push(t('unknown',o.unknown.join(t('sep'))));
+      if(o.dup.length) bits.push(t('dup',o.dup.join(t('sep'))));
+      if(o.missing.length) bits.push(t('missing',o.missing.map(x=>x.num).join(t('sep')),state.settings.appendMissing));
+      showMsg(om, bits.length?bits.join(t('join')):t('orderOk',o.seq.length), bits.length?'warn':'ok');
+    }
+    const seq = o.given ? o.seq : [...state.images].sort((a,b)=>a.num-b.num);
+    pages=n?layoutOrdered(seq):[];
+    $('#stat').textContent = n ? t('statOrder',seq.length,pages.length) : '';
+  }
+  lastPages=pages; lastMode=state.tab;
+  $('#pdfBtn').disabled=!pages.length;
+  renderPreview(pages,state.tab);
+}
+
+function renderThumbs(){
+  const box=$('#thumbs'); box.innerHTML='';
+  const list=[...state.images].sort((a,b)=>a.num-b.num);
+  $('#count').textContent=list.length?(lang==='zh'?`（${list.length}）`:`(${list.length})`):'';
+  const {aw}=geom();
+  for(const im of list){
+    const a=rt[im.id]; const k=kOf(im);
+    const d=document.createElement('div'); d.className='thumb';
+    const D=dims(im); const wide=D.w*k>aw;
+    d.innerHTML=`<div class="imgbox"><img alt=""></div><span class="num">${im.num}</span><button class="del" title="${t('del')}">✕</button>
+      <div class="meta ${(!a||!a.glyph||wide)?'warn':''}" title="${im.name||''}">${a&&a.glyph?t('glyph',Math.round(a.glyph)):t('noGlyph')} · ${t('mmWide',Math.round(Math.min(aw,D.w*k)))}</div>
+      <div class="sz"><button data-d="-1">−</button><span>×${(im.mult||1).toFixed(2)}</span><button data-d="1">+</button></div>`;
+    d.querySelector('img').src=im.src;
+    d.querySelector('.del').onclick=()=>{ state.images=state.images.filter(x=>x!==im); delete rt[im.id]; changed(); };
+    d.querySelectorAll('.sz button').forEach(b=>b.onclick=()=>{ im.mult=Math.max(0.2,Math.min(5,Math.round(((im.mult||1)+0.05*b.dataset.d)*100)/100)); changed(); });
+    d.querySelector('.sz span').ondblclick=()=>{ im.mult=1; changed(); };
+    box.appendChild(d);
+  }
+}
+
+/* ---------- adding images ---------- */
+async function addFiles(files){
+  const imgs=[...files].filter(f=>f.type.startsWith('image/'));
+  if(!imgs.length) return;
+  busy(true); let fail=0;
+  for(const f of imgs){
+    try{
+      const src=await readFile(f); const img=await loadImage(src);
+      const im={id:uid(), num:state.nextNum++, name:f.name||t('pasted'), src, w:img.naturalWidth, h:img.naturalHeight, mult:1};
+      rt[im.id]={img, ...analyze(img), clean:whiten(img)}; state.images.push(im);
+    }catch(e){ fail++; }
+  }
+  busy(false);
+  showMsg($('#upMsg'), t('added',imgs.length-fail,fail), fail?'warn':'ok');
+  changed();
+}
+function busy(on,text){ const b=$('#busy'); b.textContent=text||t('busy'); b.classList.toggle('show',on); }
+
+/* ---------- persistence (this browser only) ---------- */
+let dbp=null;
+function idb(){ if(dbp) return dbp; dbp=new Promise(res=>{ try{ const r=indexedDB.open('shot-sheet',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }catch(e){res(null);} }); return dbp; }
+async function idbSet(k,v){ try{ const db=await idb(); if(!db) return; db.transaction('kv','readwrite').objectStore('kv').put(v,k); }catch(e){} }
+async function idbGet(k){ try{ const db=await idb(); if(!db) return null; return await new Promise(res=>{ const r=db.transaction('kv').objectStore('kv').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>res(null); }); }catch(e){ return null; } }
+function snapshot(){ return {v:1, nextNum:state.nextNum, settings:state.settings, orderText:state.orderText, tab:state.tab,
+  images:state.images.map(({id,num,name,src,w,h,mult})=>({id,num,name,src,w,h,mult}))}; }
+let saveT=0;
+function changed(){ render(); clearTimeout(saveT); saveT=setTimeout(()=>idbSet('project',snapshot()),500); }
+async function restore(p){
+  if(!p||!Array.isArray(p.images)) return false;
+  busy(true,t('loading'));
+  state.settings={...DEFAULTS,...(p.settings||{})}; state.orderText=p.orderText||''; state.tab=p.tab==='order'?'order':'cut';
+  state.images=[]; for(const k in rt) delete rt[k];
+  for(const x of p.images){ try{ const img=await loadImage(x.src); const im={id:x.id||uid(),num:x.num,name:x.name,src:x.src,w:img.naturalWidth,h:img.naturalHeight,mult:x.mult||1};
+    rt[im.id]={img,...analyze(img),clean:whiten(img)}; state.images.push(im); }catch(e){} }
+  state.nextNum=Math.max(p.nextNum||1, ...state.images.map(i=>i.num+1), 1);
+  busy(false); syncInputs(); return true;
+}
+
+/* ---------- downloads ---------- */
+let dl=null;
+(async()=>{
+  for(let i=0;i<40 && !(window.claude&&window.claude.use);i++) await new Promise(r=>setTimeout(r,100));
+  try{ if(window.claude&&window.claude.use) dl=await window.claude.use('downloads'); }catch(e){ dl=null; }
+})();
+async function saveFile(filename,data,msgEl){
+  if(!dl){ showMsg(msgEl,t('noDl'),'warn'); return false; }
+  try{ await dl.save({filename,data}); showMsg(msgEl,t('saved',filename),'ok'); return true; }
+  catch(e){ const c=e&&e.code; showMsg(msgEl, c==='declined'?t('declined'):c==='rate_limited'?t('rateLimited'):t('dlFail')+(e&&e.message||c||e),'warn'); return false; }
+}
+
+/* ---------- PDF ---------- */
+async function makePDF(){
+  const msg=$('#pdfMsg');
+  if(!window.jspdf){ showMsg(msg,t('noJsPdf'),'warn'); return; }
+  const pages=lastPages, mode=lastMode; if(!pages.length) return;
+  busy(true,t('makingPdf')); await new Promise(r=>setTimeout(r,30));
+  try{
+    const {pw,ph,m}=geom(); const g=+state.settings.gap||4;
+    const orient=pw>ph?'landscape':'portrait';
+    const doc=new window.jspdf.jsPDF({unit:'mm',format:[pw,ph],orientation:orient,compress:true});
+    const DPI=260;
+    pages.forEach((pl,i)=>{
+      if(i>0) doc.addPage([pw,ph],orient);
+      for(const p of pl){
+        const ppm=Math.min(dims(p.im).w/p.iw, DPI/25.4); // px per mm
+        const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(p.w*ppm)); c.height=Math.max(1,Math.round(p.h*ppm));
+        drawSlice(c.getContext('2d'),p,ppm);
+        doc.addImage(c.toDataURL('image/jpeg',0.9),'JPEG',p.x,p.y,p.w,p.h,undefined,'FAST');
+      }
+      if(mode==='cut'){
+        doc.setLineDashPattern([1.6,1.2],0); doc.setDrawColor(130); doc.setLineWidth(0.25);
+        for(const p of pl) doc.rect(p.x-g/2,p.y-g/2,p.w+g,p.h+g,'S');
+        doc.setLineDashPattern([],0);
+      }
+      doc.setFont('helvetica','bold'); doc.setFontSize(BADGE_FONT); doc.setLineWidth(0.25); doc.setDrawColor(30); doc.setFillColor(255,255,255); doc.setTextColor(15);
+      for(const p of pl){ if(!p.label) continue; const bw=badgeW(p.label), x=p.x+p.w-bw-0.8, y=p.y+0.8;
+        doc.roundedRect(x,y,bw,BADGE_H,BADGE_H/2,BADGE_H/2,'FD');
+        doc.text(p.label,x+bw/2,y+BADGE_H/2,{align:'center',baseline:'middle'}); }
+      if(m>=5){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(170); doc.text(`Page ${i+1}/${pages.length}`,pw/2,ph-m/2+1,{align:'center'}); }
+    });
+    const blob=doc.output('blob');
+    const name=(mode==='cut'?t('pdfCut'):t('pdfOrder'))+`-${state.settings.paper}.pdf`;
+    busy(false);
+    await saveFile(name,blob,msg);
+  }catch(e){ busy(false); showMsg(msg,t('pdfErr')+(e&&e.message||e),'warn'); }
+}
+
+/* ---------- UI wiring ---------- */
+function syncInputs(){
+  const s=state.settings;
+  $('#paper').value=s.paper; $('#orient').value=s.orient; $('#pt').value=s.pt; $('#margin').value=s.margin; $('#gap').value=s.gap;
+  $('#rotate').checked=!!s.rotate; $('#trim').checked=s.trim!==false; $('#whiteBg').checked=s.whiteBg!==false; $('#orderLayout').value=s.orderLayout; $('#showNumOrdered').checked=!!s.showNumOrdered; $('#appendMissing').checked=!!s.appendMissing;
+  $('#orderText').value=state.orderText;
+}
+const drop=$('#drop'), fileIn=$('#file');
+drop.onclick=()=>fileIn.click();
+fileIn.onchange=()=>{ addFiles(fileIn.files); fileIn.value=''; };
+drop.ondragover=e=>{ e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave=()=>drop.classList.remove('over');
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{ e.preventDefault(); drop.classList.remove('over'); if(e.dataTransfer&&e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+document.addEventListener('paste',e=>{ if(e.target&&e.target.tagName==='TEXTAREA') return; const fs=[...(e.clipboardData?.items||[])].filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(Boolean); if(fs.length){ e.preventDefault(); addFiles(fs); } });
+
+[['paper','value'],['orient','value'],['orderLayout','value']].forEach(([id])=>$('#'+id).onchange=e=>{ state.settings[id]=e.target.value; changed(); });
+['pt','margin','gap'].forEach(id=>$('#'+id).oninput=e=>{ const v=parseFloat(e.target.value); if(!isNaN(v)&&v>0){ state.settings[id]=v; changed(); } });
+['whiteBg','trim','rotate','showNumOrdered','appendMissing'].forEach(id=>$('#'+id).onchange=e=>{ state.settings[id]=e.target.checked; changed(); });
+$('#orderText').oninput=e=>{ state.orderText=e.target.value; changed(); };
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ state.tab=t.dataset.tab; changed(); });
+$('#pdfBtn').onclick=makePDF;
+
+function twoClick(btn,label,fn){ let armed=0; btn.onclick=()=>{ if(!armed){ armed=1; btn.textContent=label(); setTimeout(()=>{armed=0;btn.textContent=t(btn.dataset.i18n);},3000); } else { armed=0; fn(); } }; }
+twoClick($('#renum'),()=>t('confirmRenum'),()=>{ $('#renum').textContent=t('renum'); [...state.images].sort((a,b)=>a.num-b.num).forEach((im,i)=>im.num=i+1); state.nextNum=state.images.length+1; changed(); });
+twoClick($('#clear'),()=>t('confirmClear'),()=>{ $('#clear').textContent=t('clear'); state.images=[]; for(const k in rt) delete rt[k]; state.nextNum=1; state.orderText=''; syncInputs(); changed(); });
+
+$('#saveProj').onclick=()=>{ if(!state.images.length){ showMsg($('#upMsg'),t('nothingToSave'),'warn'); return; } saveFile(t('projName'),JSON.stringify(snapshot()),$('#upMsg')); };
+$('#loadProj').onclick=()=>$('#projFile').click();
+$('#projFile').onchange=async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{ const p=JSON.parse(await f.text()); if(await restore(p)){ showMsg($('#upMsg'),t('opened',state.images.length),'ok'); changed(); } else showMsg($('#upMsg'),t('notProj'),'warn'); }
+  catch(err){ busy(false); showMsg($('#upMsg'),t('projFail'),'warn'); } };
+
+let rzT=0; window.addEventListener('resize',()=>{ clearTimeout(rzT); rzT=setTimeout(render,150); });
+
+document.querySelectorAll('.lang button').forEach(b=>b.onclick=()=>{ lang=b.dataset.lang; try{localStorage.setItem('sequence-lang',lang);}catch(e){} theme = lang==='zh' ? 'healing' : 'fresh'; applyTheme(); applyLang(); render(); ['#upMsg','#pdfMsg'].forEach(id=>showMsg($(id),'')); });
+let theme = lang==='zh' ? 'healing' : 'fresh';   // 中文 → Healing, English → Fresh
+let applyTheme; applyTheme=function(){ document.body.classList.remove('healing','fresh'); document.body.classList.add(theme); document.querySelectorAll('.theme button').forEach(b=>b.classList.toggle('on',b.dataset.theme===theme)); }
+
+async function applyBg(){ const v=await idbGet('bg-'+theme); if(v) document.body.style.setProperty('--scene',`url("${v}")`); else document.body.style.removeProperty('--scene'); }
+const _applyTheme=applyTheme; applyTheme=function(){ _applyTheme(); applyBg(); };
+$('#bgPick').onclick=()=>$('#bgFile').click();
+$('#bgFile').onchange=async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return; const v=await readFile(f); await idbSet('bg-'+theme,v); document.body.style.setProperty('--scene',`url("${v}")`); showMsg($('#upMsg'),t('bgSaved'),'ok'); };
+$('#bgReset').onclick=async()=>{ await idbSet('bg-'+theme,null); document.body.style.removeProperty('--scene'); };
+applyTheme();
+applyLang();
+(async()=>{ syncInputs(); const p=await idbGet('project'); if(p) await restore(p); render(); })();
+</script>
+</body>
+</html>
